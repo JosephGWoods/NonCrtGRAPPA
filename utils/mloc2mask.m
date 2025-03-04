@@ -8,7 +8,8 @@ loc= loc(~~m,:);
 cSub = ctrSub(dims);
 sub = bsxfun(@plus, round(loc), cSub);
 sub(any(bsxfun(@gt, sub, dims),2), :) = [];
-sub(any(bsxfun(@lt, sub, zeros(size(dims))),2), :) = [];
+% sub(any(bsxfun(@lt, sub, zeros(size(dims))),2), :) = [];
+sub(any(bsxfun(@le, sub, zeros(size(dims))),2), :) = []; % JGW Changed to le from lt
 sub_c = num2cell(sub, 1);
 
 mask = false(dims);

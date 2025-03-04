@@ -71,7 +71,7 @@ end
 function do_General(phmA)
 %% choose a demo setting
 spiral1_radial0 = 1;
-do2D1_do3D0 = 1;
+do2D1_do3D0 = 0;
 pSize = [7,7]; % GRAPPA kernel size in cycle/FOV, do play with this, :)
 islice = 5; % pick a slice for demonstration
 
@@ -83,6 +83,7 @@ imSize = imSize(1:3); % exclude #coil
 
 kPS = mfft3(PS); % mfft3 also handles 2D fft properly
 kcalib = kPS(91:110, 91:110, :,:); % ACS, center of k-space
+% kcalib = kPS(91:110, 91:110, 4:7,:); % ACS, center of k-space
 
 %% load a common sampling trajectory
 if spiral1_radial0, readout_info = matfile('kSpiral2D.mat');
@@ -133,13 +134,19 @@ end
 fP_direct = sosCombine(reshape(PS_tilde, size(PS)));
 aP_direct = sosCombine(reshape(aPS_tilde, size(PS)));
 
-uP_direct = test_direct(ukPS, usTraj, kcalib, pSize, imSize, sysEqPara);
-uP_dogrid = test_dogrid(ukPS, usTraj, kcalib, pSize, imSize);
+tic
+[uP_direct,uPS_direct] = test_direct(ukPS, usTraj, kcalib, pSize, imSize, sysEqPara);
+toc
+
+tic
+[uP_dogrid,uPS_dogrid] = test_dogrid(ukPS, usTraj, kcalib, pSize, imSize);
+toc
 
 %% plots
 if imSize(3) > 1  % display the picked slice
-  [fP_direct, uP_direct, uP_dogrid] = ...
-    deal(fP_direct(:,:,islice), uP_direct(:,:,islice), uP_dogrid(:,:,islice));
+    islice = ceil(imSize(3)/2);
+  [fP_direct, aP_direct, uP_direct, uP_dogrid] = ...
+    deal(fP_direct(:,:,islice), aP_direct(:,:,islice), uP_direct(:,:,islice), uP_dogrid(:,:,islice));
 end
 
 figure,
@@ -153,7 +160,7 @@ subplot(224), imagesc(uP_dogrid); axis equal, title('recon''ed onto grid');
 end
 
 %%
-function uP = test_direct(ukPS, usMask_usTraj, kcalib, pSize, imSize ...
+function [uP,uPS,ukPSG] = test_direct(ukPS, usMask_usTraj, kcalib, pSize, imSize ...
                           , sysEqPara, Tik)
 % Directly reconstruct under-sampled k-space
 %OUTPUTs:
@@ -173,12 +180,12 @@ else
                     , 'Tik',Tik);
 end
 
-[uP, PS, kPSG, ~] = grappa(ukPS, gMDL);
+[uP, uPS, ukPSG, ~] = grappa(ukPS, gMDL);
 
 end
 
 %%
-function [uP] = test_dogrid(ukPS, usTraj, kcalib, pSize, imSize, Tik)
+function [uP,uPS,ukPSG] = test_dogrid(ukPS, usTraj, kcalib, pSize, imSize, Tik)
 % Reconstruct a k-space grid
 %OUTPUTs:
 % - uP (nx, ny, nz), combined final image
@@ -192,7 +199,7 @@ usTraj = usTraj(sampled, :);
 ukPS   = ukPS(sampled,:);
 
 gMDL = grappaPrep(usTraj, kcalib, pSize, imSize, 'doGrid',true, 'Tik',Tik);
-[uP, PS, kPSG, ~] = grappa(ukPS, gMDL);
+[uP, uPS, ukPSG, ~] = grappa(ukPS, gMDL);
 
 end
 
